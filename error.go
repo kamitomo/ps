@@ -9,3 +9,5 @@ var ErrStackUnderFlow = errors.New("スタックが枯渇した状態でデー�
 var ErrEOF = errors.New("スクリプト解析中にファイル末尾まで到達")
 
 var ErrInvalidToken = errors.New("無効なトークン")
+
+var ErrType = errors.New("意図しない型変換")

@@ -29,11 +29,15 @@ func (vm *VM) push(operand Token) {
 	vm.data = append(vm.data, operand)
 }
 
-func (vm *VM) pop() Token {
+func (vm *VM) pop() (Token, error) {
+	if len(vm.data) == 0 {
+		return 0, ErrStackUnderFlow
+	}
+
 	lastIndex := len(vm.data) - 1
 	operand := vm.data[lastIndex]
 	vm.data = vm.data[0:lastIndex]
-	return operand
+	return operand, nil
 }
 
 func (vm *VM) Peek() (Token, error) {
@@ -164,43 +168,73 @@ func (vm *VM) computeReference(key string) error {
 	if value == nil {
 		return fmt.Errorf("未定義のキーによる辞書参照: %s", key)
 	}
+
+	// バインドされている値がオペーレータかどうか判定
 	operator, isOperator := value.(Operator)
 	if isOperator {
-		operator.Execute(vm)
-	} else {
-		vm.push(value)
+		// オペレータ実行
+		return operator.Execute(vm)
 	}
+
+	// キーにバインドされた値をプッシュ
+	vm.push(value)
+
 	return nil
 }
 
 // misc pop
 
-func (vm *VM) popFloat() float64 {
-	operand := vm.pop()
-	return operand.(float64)
+func (vm *VM) popFloat() (float64, error) {
+	operand, err := vm.pop()
+	if err != nil {
+		return 0, err
+	}
+	f, ok := operand.(float64)
+	if !ok {
+		err = fmt.Errorf("%v は float64 型と互換性がない: %w", operand, ErrType)
+		return 0, err
+	}
+	return f, nil
 }
 
-func (vm *VM) popInt() int {
-	f := vm.popFloat()
-	return int(f)
+func (vm *VM) popInt() (int, error) {
+	f, err := vm.popFloat()
+	if err != nil {
+		return 0, err
+	}
+	return int(f), nil
 }
 
-func (vm *VM) popOperator() Operator {
-	operator := vm.pop()
-	return operator.(Operator)
+func (vm *VM) popOperator() (Operator, error) {
+	operator, err := vm.pop()
+	if err != nil {
+		return nil, err
+	}
+	return operator.(Operator), nil
 }
 
-func (vm *VM) popName() string {
-	name := vm.pop().(string)
-	return name[1:]
+func (vm *VM) popString() (string, error) {
+	operand, err := vm.pop()
+	if err != nil {
+		return "", err
+	}
+	str, ok := operand.(string)
+	if !ok {
+		err = fmt.Errorf("%v は string 型と互換性がない: %w", operand, ErrType)
+		return "", err
+	}
+	return str, nil
 }
 
-func (vm *VM) popString() string {
-	s := vm.pop().(string)
-	return s[1 : len(s)-1]
-}
-
-func (vm *VM) popBoolean() bool {
-	s := vm.pop()
-	return s.(bool)
+func (vm *VM) popBoolean() (bool, error) {
+	operand, err := vm.pop()
+	if err != nil {
+		return false, err
+	}
+	b, ok := operand.(bool)
+	if !ok {
+		err = fmt.Errorf("%v は bool 型と互換性がない: %w", operand, ErrType)
+		return false, err
+	}
+	return b, nil
 }
